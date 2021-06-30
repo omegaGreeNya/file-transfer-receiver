@@ -13,6 +13,8 @@ import Data.String.UTF8 (encode, decode)
 -- Adding dirs
 import System.Directory (createDirectoryIfMissing)
 
+import System.IO (openFile, IOMode(AppendMode), hClose)
+
 import Control.Monad (unless)
 
 port :: ServiceName
@@ -43,19 +45,22 @@ main = do
       createDirectoryIfMissing True properFilePath
       
       let fullFilePath = properFilePath <> fileNameStr
-      receiveFileData s fullFilePath
+      hFile <- openFile fullFilePath AppendMode
+      receiveFileData s hFile 
+      hClose hFile
       
       print "File received and saved!"
-      putStrLn waitingMsg
+      putStrLn waitingMsg 
          where
-            receiveFileData s pathName = do
-               msg <- recv s 1024
+            receiveFileData s hFile = do
+               msg <- recv s receveSize
                unless (B.null msg) $ do
                   putStrLn $ "Received " <> show (B.length msg) <> " Bytes."
-                  B.appendFile pathName msg
-                  receiveFileData s pathName
+                  B.hPut hFile msg
+                  receiveFileData s hFile
 
-
+receveSize :: Int
+receveSize = 524288
 
 
 makeProperDir :: String -> FilePath
